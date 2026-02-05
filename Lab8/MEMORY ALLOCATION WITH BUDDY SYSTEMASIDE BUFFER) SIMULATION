@@ -1,0 +1,174 @@
+#include <iostream>
+#include <vector>
+#include <iomanip>
+#include <string>
+#include <algorithm>
+#include <utility>
+
+using namespace std;
+
+struct SegmentTableEntry {
+    int base;
+    int limit;
+    bool valid;
+    string segmentName;
+
+    SegmentTableEntry(int b = 0, int l = 0, bool v = false, string name = "")
+        : base(b), limit(l), valid(v), segmentName(name) {}
+};
+
+class SegmentationSystem {
+private:
+    vector<SegmentTableEntry> segmentTable;
+    const int MAX_SEGMENTS = 8;
+    int nextAvailableAddress;
+
+public:
+    SegmentationSystem() {
+        segmentTable.resize(MAX_SEGMENTS);
+        nextAvailableAddress = 0;
+    }
+
+    bool addSegment(int segmentNumber, int base, int limit, string name = "") {
+        if (segmentNumber < 0 || segmentNumber >= MAX_SEGMENTS) {
+            cout << "Error: Invalid segment number " << segmentNumber << endl;
+            return false;
+        }
+
+        segmentTable[segmentNumber].base = base;
+        segmentTable[segmentNumber].limit = limit;
+        segmentTable[segmentNumber].valid = true;
+        segmentTable[segmentNumber].segmentName = name;
+
+        cout << "Segment " << segmentNumber << " (" << name << ") added\n";
+        cout << " Base: " << base << "\n Limit: " << limit << endl;
+        return true;
+    }
+
+    bool addSegmentAuto(int segmentNumber, int size, string name = "") {
+        if (segmentNumber < 0 || segmentNumber >= MAX_SEGMENTS) {
+            cout << "Error: Invalid segment number " << segmentNumber << endl;
+            return false;
+        }
+
+        segmentTable[segmentNumber].base = nextAvailableAddress;
+        segmentTable[segmentNumber].limit = size;
+        segmentTable[segmentNumber].valid = true;
+        segmentTable[segmentNumber].segmentName = name;
+
+        nextAvailableAddress += size;
+
+        cout << "Segment " << segmentNumber << " (" << name << ") created\n";
+        cout << " Base: " << segmentTable[segmentNumber].base
+             << "\n Limit: " << size << endl;
+        return true;
+    }
+
+    int translateAddress(int segmentNumber, int offset) {
+        cout << "\n--- Address Translation ---" << endl;
+        cout << "Logical Address: (Segment " << segmentNumber
+             << ", Offset " << offset << ")" << endl;
+
+        if (segmentNumber < 0 || segmentNumber >= MAX_SEGMENTS) {
+            segmentationFault(segmentNumber, offset, "Invalid segment number");
+            return -1;
+        }
+
+        if (!segmentTable[segmentNumber].valid) {
+            segmentationFault(segmentNumber, offset, "Segment not in memory");
+            return -1;
+        }
+
+        if (offset < 0 || offset >= segmentTable[segmentNumber].limit) {
+            segmentationFault(segmentNumber, offset, "Offset exceeds segment limit");
+            return -1;
+        }
+
+        int physicalAddress = segmentTable[segmentNumber].base + offset;
+
+        cout << "Segment: " << segmentTable[segmentNumber].segmentName << endl;
+        cout << "Base Address: " << segmentTable[segmentNumber].base << endl;
+        cout << "Limit: " << segmentTable[segmentNumber].limit << endl;
+        cout << "Physical Address: " << physicalAddress << endl;
+        cout << "Translation successful!" << endl;
+
+        return physicalAddress;
+    }
+
+    void displaySegmentTable() {
+        cout << "\n=== SEGMENT TABLE ===" << endl;
+        cout << setw(8) << "Seg#"
+             << setw(15) << "Name"
+             << setw(10) << "Base"
+             << setw(10) << "Limit"
+             << setw(10) << "Valid" << endl;
+
+        cout << string(53, '-') << endl;
+
+        for (int i = 0; i < MAX_SEGMENTS; i++) {
+            if (segmentTable[i].valid) {
+                cout << setw(8) << i
+                     << setw(15) << segmentTable[i].segmentName
+                     << setw(10) << segmentTable[i].base
+                     << setw(10) << segmentTable[i].limit
+                     << setw(10) << "Yes" << endl;
+            }
+        }
+    }
+
+    void segmentationFault(int segment, int offset, string reason) {
+        cout << "\n*** SEGMENTATION FAULT ***" << endl;
+        cout << "Reason: " << reason << endl;
+        cout << " Segment: " << segment << "\n Offset: " << offset << endl;
+    }
+
+    void displayMemoryLayout() {
+        cout << "\n=== MEMORY LAYOUT ===" << endl;
+
+        vector<pair<int, string>> layout;
+
+        for (int i = 0; i < MAX_SEGMENTS; i++) {
+            if (segmentTable[i].valid) {
+                layout.push_back(
+                    make_pair(segmentTable[i].base,
+                              "Segment " + string(1, '0' + i) +
+                              " (" + segmentTable[i].segmentName + ")"));
+            }
+        }
+
+        sort(layout.begin(), layout.end());
+
+        for (size_t i = 0; i < layout.size(); i++) {
+            cout << "Address " << setw(6) << layout[i].first
+                 << ": " << layout[i].second << endl;
+        }
+    }
+};
+
+int main() {
+    cout << "SEGMENTATION SYSTEM SIMULATOR" << endl;
+    cout << "=============================" << endl;
+
+    SegmentationSystem segSys;
+
+    cout << "\n--- Creating Program Segments ---" << endl;
+    segSys.addSegmentAuto(0, 1000, "Code");
+    segSys.addSegmentAuto(1, 400, "Global Data");
+    segSys.addSegmentAuto(2, 300, "Heap");
+    segSys.addSegmentAuto(3, 200, "Stack");
+    segSys.addSegmentAuto(4, 500, "Shared Library");
+
+    segSys.displaySegmentTable();
+    segSys.displayMemoryLayout();
+
+    cout << "\n--- Testing Address Translations ---" << endl;
+    segSys.translateAddress(0, 500);
+    segSys.translateAddress(1, 200);
+    segSys.translateAddress(2, 150);
+
+    segSys.translateAddress(0, 1500);
+    segSys.translateAddress(5, 100);
+    segSys.translateAddress(1, -50);
+
+    return 0;
+}
