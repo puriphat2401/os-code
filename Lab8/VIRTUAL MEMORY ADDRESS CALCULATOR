@@ -1,0 +1,285 @@
+#include &lt;iostream&gt;
+#include &lt;cmath&gt;
+#include &lt;iomanip&gt;
+#include &lt;string&gt;
+using namespace std;
+class VirtualMemoryCalculator {
+private:
+long long addressSpaceBits;
+long long pageSize;
+long long physicalMemorySize;
+long long pageTableEntrySize;
+long long power(int base, int exp) {
+
+long long result = 1;
+for (int i = 0; i &lt; exp; i++) {
+result *= base;
+}
+return result;
+}
+int log2(long long n) {
+int count = 0;
+while (n &gt; 1) {
+n /= 2;
+count++;
+}
+return count;
+}
+string formatBytes(long long bytes) {
+if (bytes &gt;= 1099511627776LL) { // 1 TB
+return to_string(bytes / 1099511627776LL) + &quot; TB&quot;;
+} else if (bytes &gt;= 1073741824) { // 1 GB
+return to_string(bytes / 1073741824) + &quot; GB&quot;;
+} else if (bytes &gt;= 1048576) { // 1 MB
+return to_string(bytes / 1048576) + &quot; MB&quot;;
+} else if (bytes &gt;= 1024) { // 1 KB
+return to_string(bytes / 1024) + &quot; KB&quot;;
+}
+return to_string(bytes) + &quot; bytes&quot;;
+}
+public:
+void calculateBasicPaging() {
+cout &lt;&lt; &quot;\n========== BASIC PAGING CALCULATOR ==========&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Enter virtual address space size in bits (e.g., 32, 64): &quot;;
+cin &gt;&gt; addressSpaceBits;
+cout &lt;&lt; &quot;Enter page size in bytes (e.g., 4096, 8192): &quot;;
+cin &gt;&gt; pageSize;
+// Calculate offset bits
+int offsetBits = log2(pageSize);
+// Calculate page number bits
+int pageNumberBits = addressSpaceBits - offsetBits;
+// Calculate number of pages
+long long numPages = power(2, pageNumberBits);
+// Calculate virtual address space size
+long long addressSpaceSize = power(2, addressSpaceBits);
+cout &lt;&lt; &quot;\n=== RESULTS ===&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Virtual Address Space Size: &quot; &lt;&lt; formatBytes(addressSpaceSize) &lt;&lt; endl;
+cout &lt;&lt; &quot;Page Size: &quot; &lt;&lt; formatBytes(pageSize) &lt;&lt; endl;
+cout &lt;&lt; &quot;Number of Pages: &quot; &lt;&lt; numPages &lt;&lt; endl;
+cout &lt;&lt; &quot;Offset Bits: &quot; &lt;&lt; offsetBits &lt;&lt; endl;
+cout &lt;&lt; &quot;Page Number Bits: &quot; &lt;&lt; pageNumberBits &lt;&lt; endl;
+// Page table size calculation
+cout &lt;&lt; &quot;\nEnter page table entry size in bytes (typically 4 or 8): &quot;;
+cin &gt;&gt; pageTableEntrySize;
+long long pageTableSize = numPages * pageTableEntrySize;
+cout &lt;&lt; &quot;Page Table Size: &quot; &lt;&lt; formatBytes(pageTableSize) &lt;&lt; endl;
+// Show address format
+
+cout &lt;&lt; &quot;\n=== ADDRESS FORMAT ===&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Bit Layout:&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Bits &quot; &lt;&lt; addressSpaceBits - 1 &lt;&lt; &quot; - &quot; &lt;&lt; offsetBits
+&lt;&lt; &quot;: Page Number (&quot; &lt;&lt; pageNumberBits &lt;&lt; &quot; bits)&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Bits &quot; &lt;&lt; offsetBits - 1 &lt;&lt; &quot; - 0: Offset (&quot;
+&lt;&lt; offsetBits &lt;&lt; &quot; bits)&quot; &lt;&lt; endl;
+}
+void calculateTwoLevelPaging() {
+cout &lt;&lt; &quot;\n========== TWO-LEVEL PAGING CALCULATOR ==========&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Enter virtual address space size in bits: &quot;;
+cin &gt;&gt; addressSpaceBits;
+cout &lt;&lt; &quot;Enter page size in bytes: &quot;;
+cin &gt;&gt; pageSize;
+cout &lt;&lt; &quot;Enter page table entry size in bytes: &quot;;
+cin &gt;&gt; pageTableEntrySize;
+// Calculate offset bits
+int offsetBits = log2(pageSize);
+// Calculate how many PTEs fit in one page
+long long ptesPerPage = pageSize / pageTableEntrySize;
+int secondLevelBits = log2(ptesPerPage);
+// Calculate first level bits
+int firstLevelBits = addressSpaceBits - offsetBits - secondLevelBits;
+long long numFirstLevelEntries = power(2, firstLevelBits);
+long long numSecondLevelTables = numFirstLevelEntries;
+cout &lt;&lt; &quot;\n=== TWO-LEVEL PAGE TABLE STRUCTURE ===&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Offset Bits: &quot; &lt;&lt; offsetBits &lt;&lt; endl;
+cout &lt;&lt; &quot;Second-Level Index Bits: &quot; &lt;&lt; secondLevelBits &lt;&lt; endl;
+cout &lt;&lt; &quot;First-Level Index Bits: &quot; &lt;&lt; firstLevelBits &lt;&lt; endl;
+cout &lt;&lt; &quot;Entries per page: &quot; &lt;&lt; ptesPerPage &lt;&lt; endl;
+cout &lt;&lt; &quot;Number of First-Level Entries: &quot; &lt;&lt; numFirstLevelEntries &lt;&lt; endl;
+long long outerPageTableSize = numFirstLevelEntries * pageTableEntrySize;
+cout &lt;&lt; &quot;\nOuter Page Table Size: &quot; &lt;&lt; formatBytes(outerPageTableSize) &lt;&lt; endl;
+long long maxInnerTablesSize = numSecondLevelTables * pageSize;
+cout &lt;&lt; &quot;Max Inner Page Tables Size: &quot; &lt;&lt; formatBytes(maxInnerTablesSize) &lt;&lt; endl;
+cout &lt;&lt; &quot;\n=== ADDRESS FORMAT ===&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Bit Layout:&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Bits &quot; &lt;&lt; addressSpaceBits - 1 &lt;&lt; &quot; - &quot;
+&lt;&lt; (offsetBits + secondLevelBits)
+&lt;&lt; &quot;: Outer Index (&quot; &lt;&lt; firstLevelBits &lt;&lt; &quot; bits)&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Bits &quot; &lt;&lt; (offsetBits + secondLevelBits - 1) &lt;&lt; &quot; - &quot;
+&lt;&lt; offsetBits &lt;&lt; &quot;: Inner Index (&quot; &lt;&lt; secondLevelBits &lt;&lt; &quot; bits)&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Bits &quot; &lt;&lt; offsetBits - 1 &lt;&lt; &quot; - 0: Offset (&quot;
+&lt;&lt; offsetBits &lt;&lt; &quot; bits)&quot; &lt;&lt; endl;
+}
+void calculatePhysicalMemory() {
+cout &lt;&lt; &quot;\n========== PHYSICAL MEMORY CALCULATOR ==========&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Enter physical address size in bits: &quot;;
+int physicalAddressBits;
+cin &gt;&gt; physicalAddressBits;
+cout &lt;&lt; &quot;Enter page/frame size in bytes: &quot;;
+cin &gt;&gt; pageSize;
+
+int offsetBits = log2(pageSize);
+int frameNumberBits = physicalAddressBits - offsetBits;
+long long numFrames = power(2, frameNumberBits);
+long long physicalMemory = power(2, physicalAddressBits);
+cout &lt;&lt; &quot;\n=== RESULTS ===&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Physical Memory Size: &quot; &lt;&lt; formatBytes(physicalMemory) &lt;&lt; endl;
+cout &lt;&lt; &quot;Frame Size: &quot; &lt;&lt; formatBytes(pageSize) &lt;&lt; endl;
+cout &lt;&lt; &quot;Number of Frames: &quot; &lt;&lt; numFrames &lt;&lt; endl;
+cout &lt;&lt; &quot;Frame Number Bits: &quot; &lt;&lt; frameNumberBits &lt;&lt; endl;
+cout &lt;&lt; &quot;Offset Bits: &quot; &lt;&lt; offsetBits &lt;&lt; endl;
+}
+void calculateEffectiveAccessTime() {
+cout &lt;&lt; &quot;\n========== EFFECTIVE ACCESS TIME CALCULATOR ==========&quot; &lt;&lt; endl;
+double memoryAccessTime, tlbAccessTime, hitRatio;
+cout &lt;&lt; &quot;Enter memory access time (ns): &quot;;
+cin &gt;&gt; memoryAccessTime;
+cout &lt;&lt; &quot;Enter TLB access time (ns): &quot;;
+cin &gt;&gt; tlbAccessTime;
+cout &lt;&lt; &quot;Enter TLB hit ratio (0.0 - 1.0): &quot;;
+cin &gt;&gt; hitRatio;
+// On TLB hit: TLB access + memory access
+// On TLB miss: TLB access + page table access + memory access
+double eatWithTLB = (hitRatio * (tlbAccessTime + memoryAccessTime)) +
+((1 - hitRatio) * (tlbAccessTime + 2 * memoryAccessTime));
+double slowdown = eatWithTLB / memoryAccessTime;
+cout &lt;&lt; &quot;\n=== RESULTS ===&quot; &lt;&lt; endl;
+cout &lt;&lt; fixed &lt;&lt; setprecision(2);
+cout &lt;&lt; &quot;Effective Access Time: &quot; &lt;&lt; eatWithTLB &lt;&lt; &quot; ns&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Slowdown Factor: &quot; &lt;&lt; slowdown &lt;&lt; &quot;x&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Performance overhead: &quot; &lt;&lt; (slowdown - 1) * 100 &lt;&lt; &quot;%&quot; &lt;&lt; endl;
+// Show what hit ratio is needed for different performance targets
+cout &lt;&lt; &quot;\n=== HIT RATIO ANALYSIS ===&quot; &lt;&lt; endl;
+double targetOverheads[] = {0.05, 0.10, 0.20};
+for (double overhead : targetOverheads) {
+double requiredHitRatio = (memoryAccessTime * (1 + overhead) - tlbAccessTime - 2 * memoryAccessTime) /
+(memoryAccessTime - tlbAccessTime);
+if (requiredHitRatio &gt;= 0 &amp;&amp; requiredHitRatio &lt;= 1) {
+cout &lt;&lt; &quot;For &quot; &lt;&lt; (overhead * 100) &lt;&lt; &quot;% overhead, need hit ratio: &quot;
+&lt;&lt; (requiredHitRatio * 100) &lt;&lt; &quot;%&quot; &lt;&lt; endl;
+}
+}
+}
+void addressExample() {
+cout &lt;&lt; &quot;\n========== ADDRESS TRANSLATION EXAMPLE ==========&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Enter virtual address space bits: &quot;;
+cin &gt;&gt; addressSpaceBits;
+cout &lt;&lt; &quot;Enter page size in bytes: &quot;;
+cin &gt;&gt; pageSize;
+cout &lt;&lt; &quot;Enter a logical address (decimal): &quot;;
+long long logicalAddress;
+
+cin &gt;&gt; logicalAddress;
+int offsetBits = log2(pageSize);
+long long offsetMask = pageSize - 1;
+long long pageNumber = logicalAddress / pageSize;
+long long offset = logicalAddress &amp; offsetMask;
+cout &lt;&lt; &quot;\n=== ADDRESS BREAKDOWN ===&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Logical Address: &quot; &lt;&lt; logicalAddress &lt;&lt; &quot; (decimal)&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Page Number: &quot; &lt;&lt; pageNumber &lt;&lt; endl;
+cout &lt;&lt; &quot;Offset: &quot; &lt;&lt; offset &lt;&lt; endl;
+cout &lt;&lt; &quot;\nAssuming page &quot; &lt;&lt; pageNumber &lt;&lt; &quot; maps to frame: &quot;;
+long long frameNumber;
+cin &gt;&gt; frameNumber;
+long long physicalAddress = (frameNumber * pageSize) + offset;
+cout &lt;&lt; &quot;Physical Address: &quot; &lt;&lt; physicalAddress &lt;&lt; &quot; (decimal)&quot; &lt;&lt; endl;
+}
+void mainMenu() {
+int choice;
+do {
+cout &lt;&lt; &quot;\n\n========================================&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;VIRTUAL MEMORY CALCULATOR&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;========================================&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;1. Basic Paging Calculations&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;2. Two-Level Paging Calculations&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;3. Physical Memory Calculations&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;4. Effective Access Time with TLB&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;5. Address Translation Example&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;0. Exit&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;========================================&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Enter choice: &quot;;
+cin &gt;&gt; choice;
+switch(choice) {
+case 1:
+calculateBasicPaging();
+break;
+case 2:
+calculateTwoLevelPaging();
+break;
+case 3:
+calculatePhysicalMemory();
+break;
+case 4:
+calculateEffectiveAccessTime();
+break;
+case 5:
+addressExample();
+break;
+case 0:
+cout &lt;&lt; &quot;Exiting...&quot; &lt;&lt; endl;
+break;
+default:
+cout &lt;&lt; &quot;Invalid choice!&quot; &lt;&lt; endl;
+}
+} while (choice != 0);
+}
+};
+int main() {
+VirtualMemoryCalculator calc;
+calc.mainMenu();
+
+return 0;
+}
+
+ADDITIONAL EXAMPLE: COMPLETE ADDRESS TRANSLATION DEMO
+
+#include &lt;iostream&gt;
+#include &lt;iomanip&gt;
+#include &lt;bitset&gt;
+using namespace std;
+void demonstrateAddressTranslation() {
+cout &lt;&lt; &quot;========== ADDRESS TRANSLATION DEMONSTRATION ==========&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;\nScenario:&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;- 32-bit virtual address space&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;- 4 KB (4096 bytes) page size&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;- 28-bit physical address space&quot; &lt;&lt; endl;
+const int PAGE_SIZE = 4096;
+const int OFFSET_BITS = 12; // log2(4096)
+const int VA_PAGE_BITS = 20; // 32 - 12
+const int PA_FRAME_BITS = 16; // 28 - 12
+// Sample page table (simplified)
+int pageTable[10] = {5, 2, 8, 1, 9, 3, 7, 4, 6, 0};
+// Sample virtual address: 8196 (0x2004)
+unsigned int virtualAddr = 8196;
+cout &lt;&lt; &quot;\n=== Translating Virtual Address: &quot; &lt;&lt; virtualAddr &lt;&lt; &quot; ===&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot;Binary: &quot; &lt;&lt; bitset&lt;32&gt;(virtualAddr) &lt;&lt; endl;
+// Extract page number and offset
+unsigned int pageNumber = virtualAddr &gt;&gt; OFFSET_BITS;
+unsigned int offset = virtualAddr &amp; ((1 &lt;&lt; OFFSET_BITS) - 1);
+cout &lt;&lt; &quot;\nExtraction:&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Page Number: &quot; &lt;&lt; pageNumber &lt;&lt; &quot; (bits 31-12)&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Offset: &quot; &lt;&lt; offset &lt;&lt; &quot; (bits 11-0)&quot; &lt;&lt; endl;
+// Look up frame number
+if (pageNumber &lt; 10) {
+unsigned int frameNumber = pageTable[pageNumber];
+cout &lt;&lt; &quot;\nPage Table Lookup:&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Page &quot; &lt;&lt; pageNumber &lt;&lt; &quot; -&gt; Frame &quot; &lt;&lt; frameNumber &lt;&lt; endl;
+// Calculate physical address
+unsigned int physicalAddr = (frameNumber &lt;&lt; OFFSET_BITS) | offset;
+cout &lt;&lt; &quot;\nPhysical Address Calculation:&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Frame Number: &quot; &lt;&lt; frameNumber &lt;&lt; endl;
+cout &lt;&lt; &quot; Offset: &quot; &lt;&lt; offset &lt;&lt; endl;
+cout &lt;&lt; &quot; Physical Address: &quot; &lt;&lt; physicalAddr &lt;&lt; endl;
+cout &lt;&lt; &quot; Binary: &quot; &lt;&lt; bitset&lt;28&gt;(physicalAddr) &lt;&lt; endl;
+// Verification
+cout &lt;&lt; &quot;\nVerification:&quot; &lt;&lt; endl;
+cout &lt;&lt; &quot; Frame &quot; &lt;&lt; frameNumber &lt;&lt; &quot; starts at: &quot;
+&lt;&lt; (frameNumber * PAGE_SIZE) &lt;&lt; endl;
+cout &lt;&lt; &quot; Add offset &quot; &lt;&lt; offset &lt;&lt; endl;
+cout &lt;&lt; &quot; Result: &quot; &lt;&lt; physicalAddr &lt;&lt; endl;
+}
+}
+
+int main() {
+demonstrateAddressTranslation();
+return 0;
+}
