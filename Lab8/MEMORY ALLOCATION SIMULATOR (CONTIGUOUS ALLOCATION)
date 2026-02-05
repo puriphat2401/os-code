@@ -1,0 +1,163 @@
+#include <iostream>
+#include <vector>
+#include <iomanip>
+using namespace std;
+
+struct MemoryBlock {
+    int startAddress;
+    int size;
+    bool isFree;
+    int processID;
+
+    MemoryBlock(int start, int s, bool free = true, int pid = -1) {
+        startAddress = start;
+        size = s;
+        isFree = free;
+        processID = pid;
+    }
+};
+
+class MemoryManager {
+private:
+    vector<MemoryBlock> blocks;
+    static const int TOTAL_MEMORY = 1048576; // 1MB
+
+    void mergeAdjacentFreeBlocks() {
+        for (size_t i = 0; i + 1 < blocks.size(); ) {
+            if (blocks[i].isFree && blocks[i + 1].isFree) {
+                blocks[i].size += blocks[i + 1].size;
+                blocks.erase(blocks.begin() + i + 1);
+            } else {
+                i++;
+            }
+        }
+    }
+
+public:
+    MemoryManager() {
+        blocks.push_back(MemoryBlock(0, TOTAL_MEMORY, true));
+    }
+
+    bool allocateFirstFit(int pid, int size) {
+        cout << "\n--- First-Fit Allocation ---\n";
+        for (size_t i = 0; i < blocks.size(); i++) {
+            if (blocks[i].isFree && blocks[i].size >= size) {
+                if (blocks[i].size > size) {
+                    int newStart = blocks[i].startAddress + size;
+                    int newSize = blocks[i].size - size;
+                    blocks[i].size = size;
+                    blocks[i].isFree = false;
+                    blocks[i].processID = pid;
+                    blocks.insert(blocks.begin() + i + 1,
+                        MemoryBlock(newStart, newSize, true));
+                } else {
+                    blocks[i].isFree = false;
+                    blocks[i].processID = pid;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool allocateBestFit(int pid, int size) {
+        cout << "\n--- Best-Fit Allocation ---\n";
+        int best = -1;
+        for (size_t i = 0; i < blocks.size(); i++) {
+            if (blocks[i].isFree && blocks[i].size >= size) {
+                if (best == -1 || blocks[i].size < blocks[best].size)
+                    best = i;
+            }
+        }
+        if (best == -1) return false;
+
+        if (blocks[best].size > size) {
+            int newStart = blocks[best].startAddress + size;
+            int newSize = blocks[best].size - size;
+            blocks[best].size = size;
+            blocks[best].isFree = false;
+            blocks[best].processID = pid;
+            blocks.insert(blocks.begin() + best + 1,
+                MemoryBlock(newStart, newSize, true));
+        } else {
+            blocks[best].isFree = false;
+            blocks[best].processID = pid;
+        }
+        return true;
+    }
+
+    bool allocateWorstFit(int pid, int size) {
+        cout << "\n--- Worst-Fit Allocation ---\n";
+        int worst = -1;
+        for (size_t i = 0; i < blocks.size(); i++) {
+            if (blocks[i].isFree && blocks[i].size >= size) {
+                if (worst == -1 || blocks[i].size > blocks[worst].size)
+                    worst = i;
+            }
+        }
+        if (worst == -1) return false;
+
+        if (blocks[worst].size > size) {
+            int newStart = blocks[worst].startAddress + size;
+            int newSize = blocks[worst].size - size;
+            blocks[worst].size = size;
+            blocks[worst].isFree = false;
+            blocks[worst].processID = pid;
+            blocks.insert(blocks.begin() + worst + 1,
+                MemoryBlock(newStart, newSize, true));
+        } else {
+            blocks[worst].isFree = false;
+            blocks[worst].processID = pid;
+        }
+        return true;
+    }
+
+    void deallocate(int pid) {
+        for (size_t i = 0; i < blocks.size(); i++) {
+            if (!blocks[i].isFree && blocks[i].processID == pid) {
+                blocks[i].isFree = true;
+                blocks[i].processID = -1;
+            }
+        }
+        mergeAdjacentFreeBlocks();
+    }
+
+    void displayMemory() {
+        cout << "\n=== MEMORY MAP ===\n";
+        cout << setw(12) << "Start"
+             << setw(10) << "Size"
+             << setw(10) << "Status"
+             << setw(12) << "PID\n";
+        cout << string(44, '-') << endl;
+
+        for (size_t i = 0; i < blocks.size(); i++) {
+            cout << setw(12) << blocks[i].startAddress
+                 << setw(10) << blocks[i].size
+                 << setw(10) << (blocks[i].isFree ? "FREE" : "USED")
+                 << setw(12);
+            if (blocks[i].isFree) cout << "-";
+            else cout << blocks[i].processID;
+            cout << endl;
+        }
+    }
+};
+
+int main() {
+    cout << "MEMORY ALLOCATION SIMULATOR\n";
+    cout << "===========================\n";
+
+    MemoryManager mm;
+
+    mm.allocateFirstFit(1, 200000);
+    mm.allocateFirstFit(2, 150000);
+    mm.allocateFirstFit(3, 300000);
+    mm.displayMemory();
+
+    mm.deallocate(2);
+    mm.displayMemory();
+
+    mm.allocateFirstFit(4, 100000);
+    mm.displayMemory();
+
+    return 0;
+}
